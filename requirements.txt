@@ -1,0 +1,16 @@
+# Core dependencies
+rumps==0.4.0          # macOS menu bar framework
+Pillow==10.2.0        # Image generation for dynamic icons
+
+# Testing dependencies
+pytest==8.0.0         # Testing framework
+pytest-cov==4.1.0     # Coverage reporting
+pytest-mock==3.12.0   # Mocking utilities
+
+# Development dependencies
+black==24.1.1         # Code formatter
+pylint==3.0.3         # Code linter
+mypy==1.8.0          # Type checking
+
+# Packaging
+py2app==0.28.6        # macOS app bundling

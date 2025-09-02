@@ -32,15 +32,29 @@ A minimalist macOS menu bar application implementing the Pomodoro Technique with
      - "Skip Break" - Start next work session
 
 5. **Configuration**
-   - Settings accessible from menu
-   - Persistent configuration in `~/.pomodoro-config.json`
+   - Settings accessible from menu (JSON editor)
+   - Persistent configuration in `~/.config/pomodoro-timer/config.json`
+   - Multiple timer profiles support
    - Configurable parameters:
      - Work duration (minutes)
      - Short break duration (minutes)
      - Long break duration (minutes)
      - Pomodoros until long break
-     - Sound notifications (on/off)
-     - Auto-start breaks (on/off)
+     - Separate extend minutes for work and breaks
+
+6. **Statistics Tracking**
+   - SQLite database at `~/.config/pomodoro-timer/stats.db`
+   - Tracks every session with timestamps
+   - Session data: type, duration (excluding pauses), completion status, extends, profile name
+   - Actual work time tracking (pause time excluded)
+   - Today's progress and all-time statistics
+   - Profile-based statistics tracking
+
+7. **Crash Recovery**
+   - Periodic state saving every 30 seconds
+   - Orphaned session detection on startup
+   - Recovery dialog for interrupted sessions
+   - State persistence in `~/.config/pomodoro-timer/timer_state.json`
 
 ## Non-Functional Requirements
 
@@ -52,9 +66,10 @@ A minimalist macOS menu bar application implementing the Pomodoro Technique with
 
 ### Usability
 - Single-click access to all features
-- Keyboard shortcuts for start/stop
 - Clear visual distinction between states
 - Minimal configuration required
+- Confirmation dialog for stopping active sessions
+- Reset button safely located in Settings submenu
 
 ### Compatibility
 - macOS 10.15 (Catalina) or later
@@ -87,20 +102,21 @@ A minimalist macOS menu bar application implementing the Pomodoro Technique with
         ┌────────────┴────────────┬───────────────┐
         │                         │               │
 ┌───────▼──────┐   ┌─────────────▼──────┐  ┌────▼─────┐
-│PomodoroTimer │   │  ConfigManager     │  │IconGen   │
+│PomodoroTimer │   │  ConfigManager     │  │Stats DB  │
 │   (Model)    │   │    (Model)         │  │(Service) │
 │              │   │                    │  │          │
-│- Time logic  │   │- Load/Save config  │  │- Dynamic │
-│- Intervals   │   │- Validation        │  │  icons   │
-│- State       │   │- Defaults          │  │          │
+│- Time logic  │   │- Load/Save config  │  │- Session │
+│- Intervals   │   │- Validation        │  │  tracking│
+│- State       │   │- Defaults          │  │- Reports │
 └──────────────┘   └────────────────────┘  └──────────┘
 ```
 
 ### Component Responsibilities
 
 #### PomodoroTimer (Model)
-- Manages timer state (IDLE, WORKING, SHORT_BREAK, LONG_BREAK)
+- Manages timer state (IDLE, WORKING, SHORT_BREAK, LONG_BREAK, PAUSED)
 - Tracks elapsed time and remaining time
+- Tracks actual work time (excluding pause duration)
 - Counts completed pomodoros
 - Emits events: timer_tick, timer_complete, state_change
 
@@ -132,9 +148,15 @@ A minimalist macOS menu bar application implementing the Pomodoro Technique with
 
 #### NotificationManager (Service)
 - Shows macOS notifications
-- Creates center-screen popups
+- Creates native PyObjC completion dialogs
 - Handles notification permissions
 - Manages sound playback
+
+#### StateManager (Service)
+- Periodic state saving for crash recovery
+- Orphaned session detection
+- Recovery dialog presentation
+- State persistence and restoration
 
 ## Data Model
 
@@ -142,25 +164,35 @@ A minimalist macOS menu bar application implementing the Pomodoro Technique with
 ```json
 {
   "version": "1.0.0",
-  "timers": {
-    "work_minutes": 25,
-    "short_break_minutes": 5,
-    "long_break_minutes": 15,
-    "pomodoros_until_long_break": 4
-  },
-  "preferences": {
-    "sound_enabled": true,
-    "auto_start_breaks": false,
-    "auto_start_pomodoros": false,
-    "show_time_in_menu_bar": true,
-    "use_24_hour_format": false
-  },
-  "statistics": {
-    "total_pomodoros": 0,
-    "total_work_minutes": 0,
-    "last_reset_date": "2024-01-01"
+  "current_profile": "default",
+  "profiles": {
+    "default": {
+      "timers": {
+        "work_minutes": 25,
+        "short_break_minutes": 5,
+        "long_break_minutes": 15,
+        "pomodoros_until_long_break": 4,
+        "work_extend_minutes": 5,
+        "break_extend_minutes": 5
+      }
+    }
   }
 }
+```
+
+### Database Schema
+```sql
+CREATE TABLE sessions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_type TEXT NOT NULL,
+  start_time TIMESTAMP NOT NULL,
+  end_time TIMESTAMP,
+  planned_duration INTEGER NOT NULL,
+  actual_duration INTEGER,  -- Excludes pause time
+  completed BOOLEAN DEFAULT 0,
+  extend_count INTEGER DEFAULT 0,
+  profile_name TEXT
+);
 ```
 
 ### Timer States
@@ -223,11 +255,11 @@ class TimerState(Enum):
 - [x] Implement IconGenerator class with progress visualization
 
 ### Phase 5: Timer Controller (TDD)
-- [ ] Write tests for controller initialization and timer binding
-- [ ] Write tests for start/stop/reset operations
-- [ ] Write tests for pause/resume functionality
-- [ ] Write tests for timer completion handling
-- [ ] Implement TimerController with state management
+- [x] Write tests for controller initialization and timer binding
+- [x] Write tests for start/stop/reset operations
+- [x] Write tests for pause/resume functionality
+- [x] Write tests for timer completion handling
+- [x] Implement TimerController with state management
 
 ### Phase 6: Menu Bar Interface
 - [x] Create MenuBarApp class with rumps.App
@@ -249,24 +281,40 @@ class TimerState(Enum):
 - [x] Implement notification permissions check
 - [x] Add sound notifications (using system sounds)
 
-### Phase 9: Polish & Enhancement
-- [ ] Add keyboard shortcuts (Cmd+Shift+P for start/stop)
-- [x] Implement dark/light mode icon adaptation
-- [x] Add statistics tracking (total pomodoros, work minutes, daily goal)
-- [ ] Create app icon and assets
-- [ ] Add logging for debugging
+### Phase 9: Statistics & Database
+- [x] Create SQLite database for session tracking
+- [x] Implement session start/end tracking
+- [x] Track extends and completion status
+- [x] Add today's statistics query
+- [x] Add all-time statistics query
 
-### Phase 10: Testing & Integration
+### Phase 10: Polish & Enhancement
+- [x] Use emoji icons for visual progress
+- [x] Add statistics tracking via SQLite
+- [x] Implement real-time seconds display
+- [x] JSON-based settings editor
+- [x] Add timer profiles support (multiple timer configurations)
+- [x] Separate extend times for work and break sessions
+- [x] Enhanced completion dialogs with PyObjC integration
+- [x] Thread-safe timer operations with RLock
+- [x] Simplified menu display (removed redundant time)
+- [x] Pause time tracking (actual work time calculation)
+- [x] Crash recovery with orphaned session detection
+- [x] State persistence for power outages
+- [x] Stop confirmation dialog
+- [x] Reset button moved to Settings submenu for safety
+
+### Phase 11: Testing & Integration
 - [ ] Run full test suite and achieve coverage goals
 - [ ] Perform manual testing of all features
 - [ ] Test on different macOS versions
 - [ ] Test with various screen resolutions
 
-### Phase 11: Packaging & Distribution
+### Phase 12: Packaging & Distribution
 - [x] Create setup.py for py2app
 - [x] Configure app bundle settings (LSUIElement for dock hiding)
 - [x] Generate build script for .app bundle
-- [x] Create DMG installer script
+- [ ] Create DMG installer script
 - [x] Write user documentation (README.md)
 
 ## Development Guidelines
@@ -337,26 +385,41 @@ hdiutil create -volname "Pomodoro Timer" -srcfolder dist -ov -format UDZO Pomodo
 
 ## Current Status
 
-### Full Feature Release Complete ✅
-The application is now feature-complete with:
+### Production Release v1.0.0 ✅
+The application is now production-ready with:
 - Core timer logic with work/break intervals
-- Menu bar application with dynamic icon (updates once per minute)
-- Start/Stop/Pause/Reset controls
-- Enhanced ConfigManager with full settings persistence
+- Menu bar application with real-time emoji icons (updates every second)
+- Start/Stop/Pause/Reset controls with thread-safe operations
+- **Timer Profiles**: Multiple customizable timer configurations
+- **Separate Extend Times**: Different extend durations for work and breaks
+- **Enhanced Dialogs**: Native macOS dialogs using PyObjC
+- **Thread Safety**: RLock implementation preventing deadlocks
+- Enhanced ConfigManager with profile support
 - NotificationManager with center-screen popups and sound alerts
-- Statistics tracking (daily and total pomodoros)
-- Configurable extend minutes and daily goals
+- Statistics tracking with profile names in database
+- Configurable extend minutes (separate for work/breaks) and daily goals
 - Hidden from dock (menu bar only)
-- Ready for py2app packaging
+- **Built and packaged** with py2app
 
-### Running the MVP
+### Running the Application
+
+#### Development
 ```bash
 python3 main.py
 ```
 
+#### Production (Built App)
+```bash
+open "dist/Pomodoro Timer.app"
+```
+
+#### Building from Source
+```bash
+/usr/bin/python3 setup.py py2app
+```
+
 ## Version History
-- v0.1.0 - MVP with basic Pomodoro functionality
-- v1.0.0 - Full release with all major features implemented
+- v1.0.0 - Production release with all features, profiles, thread safety, and enhanced UI
 
 ## License
 MIT License

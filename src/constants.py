@@ -20,8 +20,14 @@ DEFAULT_LONG_BREAK_MINUTES = 15
 DEFAULT_POMODOROS_UNTIL_LONG_BREAK = 4
 
 # Configuration
-CONFIG_FILE_PATH = Path.home() / ".pomodoro-config.json"
+CONFIG_DIR = Path.home() / '.config' / 'pomodoro-timer'
+CONFIG_FILE_PATH = CONFIG_DIR / 'config.json'
+DB_FILE_PATH = CONFIG_DIR / 'stats.db'
 CONFIG_VERSION = "1.0.0"
+
+# Preferences
+SOUND_ENABLED = True
+DAILY_GOAL = 8  # Default daily pomodoro goal
 
 # UI Constants
 APP_NAME = "Pomodoro Timer"

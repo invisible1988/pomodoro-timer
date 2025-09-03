@@ -2,6 +2,18 @@
 
 A minimalist Pomodoro timer that lives in your macOS menu bar.
 
+<p align="center">
+  <img src="demo/demo.gif" alt="Pomodoro Timer Demo"/>
+</p>
+
+### Screenshots
+
+<p align="center">
+  <img src="demo/menu-ready.png" width="250" alt="Menu Ready State"/>
+  <img src="demo/completion-dialog.png" width="400" alt="Work Completion Dialog"/>
+  <img src="demo/break-complete.png" width="400" alt="Break Completion Dialog"/>
+</p>
+
 ## Features
 
 ### Core Features

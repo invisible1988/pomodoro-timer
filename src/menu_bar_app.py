@@ -663,6 +663,7 @@ class PomodoroMenuBarApp(rumps.App):
         self._close_current_dialog()  # Close dialog if open
         with self.timer_lock:
             if self.timer.state == TimerState.IDLE:
+                print(f"DEBUG: start_break menu action - current completed_pomodoros: {self.timer.completed_pomodoros}")
                 self.timer.start_break()
         # Refresh menu to show pause/stop buttons
         self._setup_menu()
@@ -734,9 +735,13 @@ class PomodoroMenuBarApp(rumps.App):
         )
     
     def skip_break(self, _):
-        """Skip the current break."""
+        """Skip the current break and start next work session."""
         with self.timer_lock:
             self.timer.skip_break()
+            # Automatically start the next work session
+            if self.timer.state == TimerState.IDLE:
+                print("DEBUG: Skip break - auto-starting next work session")
+                self.timer.start_work()
         # Refresh menu after skipping break
         self._setup_menu()
     
@@ -867,10 +872,19 @@ class PomodoroMenuBarApp(rumps.App):
     
     def _update_timer_from_config(self):
         """Update timer with values from current profile."""
-        self.timer.work_minutes = self.config_manager.get('timers.work_minutes')
-        self.timer.short_break_minutes = self.config_manager.get('timers.short_break_minutes')
-        self.timer.long_break_minutes = self.config_manager.get('timers.long_break_minutes')
-        self.timer.pomodoros_until_long_break = self.config_manager.get('timers.pomodoros_until_long_break')
+        work_minutes = self.config_manager.get('timers.work_minutes')
+        short_break_minutes = self.config_manager.get('timers.short_break_minutes')
+        long_break_minutes = self.config_manager.get('timers.long_break_minutes')
+        pomodoros_until_long_break = self.config_manager.get('timers.pomodoros_until_long_break')
+        
+        print(f"DEBUG: Updating timer from config - work: {work_minutes}, "
+              f"short_break: {short_break_minutes}, long_break: {long_break_minutes}, "
+              f"pomodoros_until_long: {pomodoros_until_long_break}")
+        
+        self.timer.work_minutes = work_minutes
+        self.timer.short_break_minutes = short_break_minutes
+        self.timer.long_break_minutes = long_break_minutes
+        self.timer.pomodoros_until_long_break = pomodoros_until_long_break
     
     def show_settings(self, _):
         """Show settings dialog."""

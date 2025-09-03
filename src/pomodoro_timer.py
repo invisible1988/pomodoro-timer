@@ -117,23 +117,16 @@ class PomodoroTimer:
         self.total_pause_seconds = 0
         self.pause_count = 0
         
-        # Debug: Log the break decision
-        print(f"DEBUG: start_break() - completed_pomodoros: {self.completed_pomodoros}, "
-              f"pomodoros_until_long_break: {self.pomodoros_until_long_break}")
-        print(f"DEBUG: short_break_minutes: {self.short_break_minutes}, "
-              f"long_break_minutes: {self.long_break_minutes}")
         
         if self.is_long_break_time():
             self.total_seconds = int(self.long_break_minutes * 60)
             session_type = 'long_break'
             planned_duration = self.long_break_minutes
-            print(f"DEBUG: Starting LONG break - {planned_duration} minutes ({self.total_seconds} seconds)")
             self._change_state(TimerState.LONG_BREAK)
         else:
             self.total_seconds = int(self.short_break_minutes * 60)
             session_type = 'short_break'
             planned_duration = self.short_break_minutes
-            print(f"DEBUG: Starting SHORT break - {planned_duration} minutes ({self.total_seconds} seconds)")
             self._change_state(TimerState.SHORT_BREAK)
         
         self.remaining_seconds = self.total_seconds
@@ -284,6 +277,11 @@ class PomodoroTimer:
     def skip_break(self) -> None:
         """Skip the current break."""
         if self.state in (TimerState.SHORT_BREAK, TimerState.LONG_BREAK):
+            # If skipping a long break, reset the pomodoro counter
+            # Otherwise we'll get another long break after the next work session
+            if self.state == TimerState.LONG_BREAK:
+                self.completed_pomodoros = 0
+            
             # End session tracking as interrupted
             if self.on_session_end and self.current_session_id:
                 self.on_session_end(False)  # completed=False
@@ -306,10 +304,7 @@ class PomodoroTimer:
         Returns:
             True if completed pomodoros equals or exceeds pomodoros_until_long_break
         """
-        result = self.completed_pomodoros >= self.pomodoros_until_long_break and self.completed_pomodoros > 0
-        print(f"DEBUG: is_long_break_time() - completed: {self.completed_pomodoros}, "
-              f"until_long: {self.pomodoros_until_long_break}, result: {result}")
-        return result
+        return self.completed_pomodoros >= self.pomodoros_until_long_break and self.completed_pomodoros > 0
     
     def get_progress_percentage(self) -> int:
         """Get the progress percentage of the current timer.

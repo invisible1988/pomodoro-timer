@@ -239,8 +239,18 @@ class TestPomodoroTimer:
         
         timer.skip_break()
         assert timer.state == TimerState.IDLE
-        # Pomodoro count should remain
+        # Pomodoro count should remain for short break
         assert timer.completed_pomodoros == 1
+        
+        # Test skipping long break resets counter
+        timer.completed_pomodoros = 4
+        timer.start_break()  # This will be a long break
+        assert timer.state == TimerState.LONG_BREAK
+        
+        timer.skip_break()
+        assert timer.state == TimerState.IDLE
+        # Pomodoro count should reset after skipping long break
+        assert timer.completed_pomodoros == 0
     
     def test_is_break_time(self):
         """Test checking if it's time for a break."""
